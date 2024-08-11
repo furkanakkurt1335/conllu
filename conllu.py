@@ -60,8 +60,10 @@ class Treebank:
     def load_conllu(self, conllu_file):
         with conllu_file.open() as f:
             content = f.read()
-        sentence_contents = content.split('\n\n')
+        sentence_contents = [sentence_content for sentence_content in content.split('\n\n') if sentence_content.strip()]
         for sentence_content in sentence_contents:
-            if sentence_content.strip():
-                sentence = Sentence(sentence_content)
-                self.sentences[sentence.sent_id] = sentence
+            sentence = Sentence(sentence_content)
+            self.sentences[sentence.sent_id] = sentence
+    
+    def get_sentence(self, id):
+        return self.sentences[id]
