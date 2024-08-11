@@ -1,17 +1,10 @@
 import re
 
 class Token:
-    def __init__(self, id, form, lemma, upos, xpos, feats, head, deprel, deps, misc):
-        self.id = id
-        self.form = form
-        self.lemma = lemma
-        self.upos = upos
-        self.xpos = xpos
-        self.feats = feats
-        self.head = head
-        self.deprel = deprel
-        self.deps = deps
-        self.misc = misc
+    def __init__(self, id, form, lemma, upos, xpos,
+                 feats, head, deprel, deps, misc):
+        self.id, self.form, self.lemma, self.upos, self.xpos = id, form, lemma, upos, xpos
+        self.feats, self.head, self.deprel, self.deps, self.misc = feats, head, deprel, deps, misc
 
 metadata_pattern = re.compile(r'#\s*(\S+)\s*=\s*(.+)$')
 token_pattern = re.compile(r'(?:.+\t){9}(?:.+)$')
@@ -19,9 +12,7 @@ token_pattern = re.compile(r'(?:.+\t){9}(?:.+)$')
 class Sentence:
     def __init__(self, content):
         self.tokens = {}
-        self.sent_id = None
-        self.text = None
-        self.metadata = {}
+        self.sent_id, self.text, self.metadata = None, None, {}
         for line in content.split('\n'):
             metadata_search = metadata_pattern.search(line)
             if metadata_search:
@@ -49,7 +40,7 @@ class Sentence:
 
     def get_token(self, id):
         if id not in self.tokens:
-            return None
+            return False
         return self.tokens[id]
 
 class Treebank:
@@ -58,6 +49,8 @@ class Treebank:
         self.sentences = {}
 
     def load_conllu(self, conllu_file):
+        if not conllu_file.exists():
+            return False
         with conllu_file.open() as f:
             content = f.read()
         sentence_contents = [sentence_content for sentence_content in content.split('\n\n') if sentence_content.strip()]
@@ -67,5 +60,5 @@ class Treebank:
     
     def get_sentence(self, id):
         if id not in self.sentences:
-            return None
+            return False
         return self.sentences[id]
