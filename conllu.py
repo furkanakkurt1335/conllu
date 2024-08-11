@@ -48,9 +48,9 @@ class Sentence:
                 token.head = self.get_token(token.head)
 
     def get_token(self, id):
-        for token_id, token in self.tokens.items():
-            if token_id == id:
-                return token
+        if id not in self.tokens:
+            return None
+        return self.tokens[id]
 
 class Treebank:
     def __init__(self, name):
@@ -66,4 +66,6 @@ class Treebank:
             self.sentences[sentence.sent_id] = sentence
     
     def get_sentence(self, id):
+        if id not in self.sentences:
+            return None
         return self.sentences[id]
