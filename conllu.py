@@ -17,7 +17,7 @@ token_pattern = re.compile(r'(?:.+\t){9}(?:.+)$')
 class Sentence:
     def __init__(self, content):
         self.tokens = {}
-        self.sent_id, self.text = self.metadata = None, None, None
+        self.sent_id, self.text, self.metadata = None, None, None
         for line in content.split('\n'):
             metadata_search = metadata_pattern.search(line)
             if metadata_search:
