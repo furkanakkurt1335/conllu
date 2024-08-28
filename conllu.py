@@ -33,11 +33,19 @@ class Sentence:
             elif token_pattern.match(line):
                 fields = line.split('\t')
                 id, form, lemma, upos, xpos, feats_str, head, deprel, deps, misc = fields
-                feats = {}
-                if '|' in feats_str:
-                    for feat in feats_str.split('|'):
-                        key, value = feat.split('=')
-                        feats[key] = value
+                if xpos == '_':
+                    xpos = None
+                if deps == '_':
+                    deps = None
+                if misc == '_':
+                    misc = None
+                feats = None
+                if feats_str != '_':
+                    feats = {}
+                    if '|' in feats_str:
+                        for feat in feats_str.split('|'):
+                            key, value = feat.split('=')
+                            feats[key] = value
                 token = Token(id, form, lemma, upos, xpos, feats, head, deprel, deps, misc)
                 self.tokens[id] = token
         for token in self.tokens.values():
