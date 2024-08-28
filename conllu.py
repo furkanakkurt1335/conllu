@@ -7,7 +7,7 @@ class Token:
                  feats, head, deprel, deps, misc):
         self.id, self.form, self.lemma, self.upos, self.xpos = id, form, lemma, upos, xpos
         self.feats, self.head, self.deprel, self.deps, self.misc = feats, head, deprel, deps, misc
-    
+
     def __str__(self):
         return self.form
 
@@ -17,7 +17,7 @@ token_pattern = re.compile(r'(?:.+\t){9}(?:.+)$')
 class Sentence:
     def __init__(self, content):
         self.tokens = {}
-        self.sent_id, self.text, self.metadata = None, None, {}
+        self.sent_id, self.text = self.metadata = None, None, None
         for line in content.split('\n'):
             metadata_search = metadata_pattern.search(line)
             if metadata_search:
@@ -27,6 +27,8 @@ class Sentence:
                 elif key == 'text':
                     self.text = value
                 else:
+                    if not self.metadata:
+                        self.metadata = {}
                     self.metadata[key.strip()] = value.strip()
             elif token_pattern.match(line):
                 fields = line.split('\t')
@@ -44,7 +46,7 @@ class Sentence:
                 token.head = self.get_token(token.head)
             else:
                 token.head = None
-    
+
     def __str__(self):
         return self.text
 
@@ -60,7 +62,7 @@ class Treebank:
         self.published = published
         if published:
             self.clone_treebank()
-    
+
     def clone_treebank(self):
         base_url = 'https://github.com/UniversalDependencies/{repo}.git'
         script_dir = Path(__file__).parent
@@ -83,7 +85,7 @@ class Treebank:
         for sentence_content in sentence_contents:
             sentence = Sentence(sentence_content)
             self.sentences[sentence.sent_id] = sentence
-    
+
     def get_sentence(self, id):
         if id not in self.sentences:
             return False
