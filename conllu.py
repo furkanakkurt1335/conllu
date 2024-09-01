@@ -13,6 +13,7 @@ class Token:
 
 metadata_pattern = re.compile(r'#\s*(\S+)\s*=\s*(.+)$')
 token_pattern = re.compile(r'(?:.+\t){9}(?:.+)$')
+id_pattern = re.compile(r'^\d+(?:-\d+)?$')
 
 class Sentence:
     def __init__(self, content):
@@ -33,8 +34,21 @@ class Sentence:
             elif token_pattern.match(line):
                 fields = line.split('\t')
                 id, form, lemma, upos, xpos, feats_str, head, deprel, deps, misc = fields
+                if not id_pattern.match(id):
+                    print(f'Invalid token id: {id} in sentence {self.sent_id}. Skipping sentence.')
+                    continue
+                if form == '_':
+                    form = None
+                if lemma == '_':
+                    lemma = None
+                if upos == '_':
+                    upos = None
                 if xpos == '_':
                     xpos = None
+                if head == '_':
+                    head = None
+                if deprel == '_':
+                    deprel = None
                 if deps == '_':
                     deps = None
                 if misc == '_':
@@ -49,19 +63,62 @@ class Sentence:
                 token = Token(id, form, lemma, upos, xpos, feats, head, deprel, deps, misc)
                 self.tokens[id] = token
         for token in self.tokens.values():
-            head_token = self.get_token(token.head)
-            if head_token:
-                token.head = self.get_token(token.head)
-            else:
-                token.head = None
+            token.head = self.get_token(token.head)
 
     def __str__(self):
         return self.text
 
     def get_token(self, id):
         if id not in self.tokens:
-            return False
+            return None
         return self.tokens[id]
+
+    def get_conllu(self):
+        conllu = ''
+        if self.sent_id:
+            conllu += f'# sent_id = {self.sent_id}\n'
+        if self.text:
+            conllu += f'# text = {self.text}\n'
+        if self.metadata:
+            for key, value in self.metadata.items():
+                conllu += f'# {key} = {value}\n'
+        for token in self.tokens.values():
+            id, form, lemma, upos, xpos = token.id, token.form, token.lemma, token.upos, token.xpos
+            if not id:
+                id = '_'
+            if not form:
+                form = '_'
+            if not lemma:
+                lemma = '_'
+            if not upos:
+                upos = '_'
+            if not xpos:
+                xpos = '_'
+            conllu += f'{id}\t{form}\t{lemma}\t{upos}\t{xpos}\t'
+            feats = '_'
+            if token.feats:
+                feats = '|'.join([f'{key}={value}' for key, value in token.feats.items()])
+            conllu += f'{feats}\t'
+            head = '_'
+            if token.head:
+                head = token.head.id
+            elif '-' in token.id:
+                head = '_'
+            elif '-' not in token.id:
+                head = '0'
+            deprel, deps, misc = token.deprel, token.deps, token.misc
+            if not deprel:
+                deprel = '_'
+            if not deps:
+                deps = '_'
+            if not misc:
+                misc = '_'
+            conllu += f'{head}\t{deprel}\t{deps}\t{misc}\n'
+        conllu += '\n'
+        return conllu
+
+    def print_conllu(self):
+        print(self.get_conllu())
 
 class Treebank:
     def __init__(self, name, published=False):
@@ -85,6 +142,8 @@ class Treebank:
             self.load_conllu(conllu_file)
 
     def load_conllu(self, conllu_file):
+        if type(conllu_file) == str:
+            conllu_file = Path(conllu_file)
         if not conllu_file.exists():
             return False
         with conllu_file.open() as f:
@@ -98,3 +157,12 @@ class Treebank:
         if id not in self.sentences:
             return False
         return self.sentences[id]
+
+    def save_conllu(self, conllu_file=None):
+        if not conllu_file:
+            out_file = f'{self.name}.conllu'
+        else:
+            out_file = conllu_file
+        with out_file.open('w') as f:
+            for sentence in self.sentences.values():
+                f.write(sentence.get_conllu())

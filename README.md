@@ -1,3 +1,3 @@
 # conllu
 
-A script for parsing CoNLL-U files without any dependencies.
+A set of classes (i.e. `Treebank`, `Sentence`, `Token`) for parsing CoNLL-U files without any dependencies.
