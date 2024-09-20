@@ -37,10 +37,6 @@ class Sentence:
                 if not id_pattern.match(id):
                     print(f'Invalid token id: {id} in sentence {self.sent_id}. Skipping sentence.')
                     continue
-                if form == '_':
-                    form = None
-                if lemma == '_':
-                    lemma = None
                 if upos == '_':
                     upos = None
                 if xpos == '_':
@@ -141,13 +137,16 @@ class Treebank:
         for conllu_file in conllu_files:
             self.load_conllu(conllu_file)
 
-    def load_conllu(self, conllu_file):
-        if type(conllu_file) == str:
-            conllu_file = Path(conllu_file)
-        if not conllu_file.exists():
-            return False
-        with conllu_file.open() as f:
-            content = f.read()
+    def load_conllu(self, data, type='file'):
+        if type == 'file':
+            if type(conllu_file) == str:
+                conllu_file = Path(conllu_file)
+            if not conllu_file.exists():
+                return False
+            with conllu_file.open() as f:
+                content = f.read()
+        elif type == 'string':
+            content = data
         sentence_contents = [sentence_content for sentence_content in content.split('\n\n') if sentence_content.strip()]
         for sentence_content in sentence_contents:
             sentence = Sentence(sentence_content)
@@ -166,3 +165,6 @@ class Treebank:
         with out_file.open('w') as f:
             for sentence in self.sentences.values():
                 f.write(sentence.get_conllu())
+
+    def add_sentence(self, sentence):
+        self.sentences[sentence.sent_id] = sentence
