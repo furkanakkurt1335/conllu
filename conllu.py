@@ -139,11 +139,11 @@ class Treebank:
 
     def load_conllu(self, data, type='file'):
         if type == 'file':
-            if type(conllu_file) == str:
-                conllu_file = Path(conllu_file)
-            if not conllu_file.exists():
+            if type(data) == str:
+                data = Path(data)
+            if not data.exists():
                 return False
-            with conllu_file.open() as f:
+            with data.open() as f:
                 content = f.read()
         elif type == 'string':
             content = data
