@@ -137,15 +137,15 @@ class Treebank:
         for conllu_file in conllu_files:
             self.load_conllu(conllu_file)
 
-    def load_conllu(self, data, type='file'):
-        if type == 'file':
+    def load_conllu(self, data, data_type='file'):
+        if data_type == 'file':
             if type(data) == str:
                 data = Path(data)
             if not data.exists():
                 return False
             with data.open() as f:
                 content = f.read()
-        elif type == 'string':
+        elif data_type == 'string':
             content = data
         sentence_contents = [sentence_content for sentence_content in content.split('\n\n') if sentence_content.strip()]
         for sentence_content in sentence_contents:
