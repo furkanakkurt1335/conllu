@@ -1,6 +1,6 @@
 from pathlib import Path
-import re
 from subprocess import run
+import re
 
 class Token:
     def __init__(self, id, form, lemma, upos, xpos,
@@ -118,25 +118,51 @@ class Sentence:
         print(self.get_conllu())
 
 class Treebank:
-    def __init__(self, name, published=False):
+    def __init__(self, name, published=False, version=None):
         self.name = name
         self.sentences = {}
         self.published = published
-        if published:
+        if self.published:
             self.clone_treebank()
+            self.directory = Path(__file__).parent / 'repos' / self.name
+            self.version = version
+            if self.version:
+                self.checkout_version()
+            else:
+                latest_tag = run(['git', 'describe', '--tags', '--abbrev=0'], capture_output=True, cwd=self.directory).stdout.decode().strip()
+                tag_pattern = re.compile(r'r(\d+\.\d+)')
+                tag_search = tag_pattern.search(latest_tag)
+                if tag_search:
+                    self.version = tag_search.group(1)
 
     def clone_treebank(self):
-        base_url = 'https://github.com/UniversalDependencies/{repo}.git'
+        base_url = 'https://github.com/UniversalDependencies/{name}.git'
         script_dir = Path(__file__).parent
         repo_dir = script_dir / 'repos'
         if not repo_dir.exists():
             repo_dir.mkdir()
         tb_dir = repo_dir / self.name
         if not tb_dir.exists():
-            run(['git', 'clone', base_url.format(repo=self.name), tb_dir])
+            run(['git', 'clone', base_url.format(name=self.name), tb_dir])
         conllu_files = list(tb_dir.glob('*.conllu'))
         for conllu_file in conllu_files:
             self.load_conllu(conllu_file)
+    
+    def checkout_version(self):
+        if not self.published:
+            return False
+        tag_pattern = re.compile(r'r(\d+\.\d+)')
+        all_tags = run(['git', 'tag', '-l'], capture_output=True, cwd=self.directory).stdout.decode().split('\n')
+        version_tags = []
+        for tag in all_tags:
+            tag_search = tag_pattern.search(tag)
+            if tag_search:
+                version_tags.append(tag_search.group(1))
+        if self.version not in version_tags:
+            print(f'Version {self.version} not found in {self.name}.')
+            self.version = None
+            return False
+        run(['git', 'checkout', f'r{self.version}'], cwd=self.directory)
 
     def load_conllu(self, data, data_type='file'):
         if data_type == 'file':
