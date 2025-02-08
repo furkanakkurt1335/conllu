@@ -93,7 +93,7 @@ class Sentence:
             conllu += f'{id}\t{form}\t{lemma}\t{upos}\t{xpos}\t'
             feats = '_'
             if token.feats:
-                feats_sorted_d = dict(sorted(token.feats.items()), key=lambda x: x[0])
+                feats_sorted_d = dict(sorted(token.feats.items(), key=lambda x: x[0]))
                 feats = '|'.join([f'{key}={value}' for key, value in feats_sorted_d.items()])
             conllu += f'{feats}\t'
             head = '_'
