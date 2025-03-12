@@ -134,6 +134,9 @@ class Treebank:
                 tag_search = tag_pattern.search(latest_tag)
                 if tag_search:
                     self.version = tag_search.group(1)
+            conllu_files = list(self.directory.glob('*.conllu'))
+            for conllu_file in conllu_files:
+                self.load_conllu(conllu_file)
 
     def clone_treebank(self):
         base_url = 'https://github.com/UniversalDependencies/{name}.git'
@@ -144,10 +147,8 @@ class Treebank:
         tb_dir = repo_dir / self.name
         if not tb_dir.exists():
             run(['git', 'clone', base_url.format(name=self.name), tb_dir])
-        conllu_files = list(tb_dir.glob('*.conllu'))
-        for conllu_file in conllu_files:
-            self.load_conllu(conllu_file)
-    
+            print(f'Cloned {self.name} to {tb_dir}.')
+
     def checkout_version(self):
         if not self.published:
             return False
@@ -163,6 +164,8 @@ class Treebank:
             self.version = None
             return False
         run(['git', 'checkout', f'r{self.version}'], cwd=self.directory)
+        print(f'Checked out version {self.version} of {self.name}.')
+        return True
 
     def load_conllu(self, data, data_type='file'):
         if data_type == 'file':
