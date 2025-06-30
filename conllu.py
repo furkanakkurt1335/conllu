@@ -1,6 +1,8 @@
 from pathlib import Path
 from subprocess import run
 import re
+import json
+import subprocess
 
 class Token:
     def __init__(self, id, form, lemma, upos, xpos,
@@ -118,25 +120,103 @@ class Sentence:
         print(self.get_conllu())
 
 class Treebank:
-    def __init__(self, name, published=False, version=None):
+    def __init__(self, name, published=False, version=None, use_gh_cli=None):
         self.name = name
         self.sentences = {}
         self.published = published
+        self.version = version
+        self.use_gh_cli = use_gh_cli if use_gh_cli is not None else self._check_gh_cli()
+        
         if self.published:
-            self.clone_treebank()
-            self.directory = Path(__file__).parent / 'repos' / self.name
-            self.version = version
-            if self.version:
-                self.checkout_version()
+            if self.use_gh_cli:
+                self._fetch_with_gh_cli()
             else:
-                latest_tag = run(['git', 'describe', '--tags', '--abbrev=0'], capture_output=True, cwd=self.directory).stdout.decode().strip()
+                self._fetch_with_git()
+    
+    def _check_gh_cli(self):
+        """Check if GitHub CLI is available and authenticated."""
+        try:
+            subprocess.run(['gh', 'auth', 'status'], 
+                          capture_output=True, text=True, check=True)
+            return True
+        except (subprocess.CalledProcessError, FileNotFoundError):
+            return False
+    
+    def _fetch_with_gh_cli(self):
+        """Fetch treebank metadata and files using GitHub CLI."""
+        try:
+            print(f"Fetching {self.name} with GitHub CLI...")
+            
+            # Get repository metadata
+            cmd = ['gh', 'api', f'repos/UniversalDependencies/{self.name}']
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            repo_info = json.loads(result.stdout)
+            
+            # Get available tags/versions
+            cmd = ['gh', 'api', f'repos/UniversalDependencies/{self.name}/tags']
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            tags = json.loads(result.stdout)
+            
+            # Determine version to use
+            if self.version:
+                # Check if requested version exists
+                version_tag = f'r{self.version}'
+                if not any(tag['name'] == version_tag for tag in tags):
+                    print(f'Warning: Version {self.version} not found, using latest')
+                    self.version = None
+            
+            if not self.version and tags:
+                # Use latest version
+                latest_tag = tags[0]['name']  # Tags are usually sorted by date
                 tag_pattern = re.compile(r'r(\d+\.\d+)')
                 tag_search = tag_pattern.search(latest_tag)
                 if tag_search:
                     self.version = tag_search.group(1)
-            conllu_files = list(self.directory.glob('*.conllu'))
-            for conllu_file in conllu_files:
-                self.load_conllu(conllu_file)
+            
+            # Get directory listing to find .conllu files
+            ref = f'r{self.version}' if self.version else repo_info['default_branch']
+            url = f'repos/UniversalDependencies/{self.name}/contents?ref={ref}'
+            cmd = ['gh', 'api', url]
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            contents = json.loads(result.stdout)
+            
+            # Find and download .conllu files
+            conllu_files = [item for item in contents if item['name'].endswith('.conllu')]
+            
+            for file_info in conllu_files:
+                print(f"  Downloading {file_info['name']}...")
+                cmd = ['gh', 'api', file_info['download_url']]
+                result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+                self.load_conllu(result.stdout, data_type='string')
+            
+            print(f"  Loaded {len(self.sentences)} sentences from {len(conllu_files)} files")
+            
+        except subprocess.CalledProcessError as e:
+            print(f"Error fetching with GitHub CLI: {e}")
+            print("Falling back to git clone method...")
+            self.use_gh_cli = False
+            self._fetch_with_git()
+        except json.JSONDecodeError as e:
+            print(f"Error parsing GitHub API response: {e}")
+            print("Falling back to git clone method...")
+            self.use_gh_cli = False
+            self._fetch_with_git()
+    
+    def _fetch_with_git(self):
+        """Fetch treebank using traditional git clone method."""
+        self.clone_treebank()
+        self.directory = Path(__file__).parent / 'repos' / self.name
+        if self.version:
+            self.checkout_version()
+        else:
+            latest_tag = run(['git', 'describe', '--tags', '--abbrev=0'], capture_output=True, cwd=self.directory).stdout.decode().strip()
+            tag_pattern = re.compile(r'r(\d+\.\d+)')
+            tag_search = tag_pattern.search(latest_tag)
+            if tag_search:
+                self.version = tag_search.group(1)
+        conllu_files = list(self.directory.glob('*.conllu'))
+        for conllu_file in conllu_files:
+            self.load_conllu(conllu_file)
 
     def clone_treebank(self):
         base_url = 'https://github.com/UniversalDependencies/{name}.git'
